@@ -4,25 +4,32 @@ import Message from "../models/message.model";
 import Conversation from "../models/conversation.model";
 
 export const sendMessage = asyncHandler(async (req, res) => {
-  const { senderId, senderEmail, conversationId, content } = req.body;
+  const { senderId, senderEmail, conversationKey, content } = req.body;
 
-  let sender = await User.findById(senderId).select("_id").lean();
-  if (!sender) {
-    sender = await User.create({ email: senderEmail, userId: senderId });
-  }
+  if (!conversationKey) throw new Error("Conversation ID is required");
 
-  let conversation = await Conversation.findById(conversationId)
-    .select("_id")
-    .lean();
-  if (!conversation) {
-    conversation = await Conversation.create({ participants: [sender?._id] });
-  }
+  let sender = await User.findOneAndUpdate(
+    { userId: senderId },
+    { $setOnInsert: { email: senderEmail } },
+    { new: true, upsert: true, select: "_id", lean: true }
+  );
+
+  let conversation = await Conversation.findOneAndUpdate(
+    { conversationKey },
+    { $setOnInsert: { participants: [sender?._id] } },
+    { new: true, upsert: true, select: "_id", lean: true }
+  );
 
   const message = await Message.create({
-    sender: sender._id,
+    sender: sender?._id,
     content,
-    conversation: conversation._id,
+    conversation: conversation?._id,
   });
 
-  res.status(200).json(message);
+  res.status(200).json({
+    senderId,
+    conversationKey,
+    content: message.content,
+    createdAt: message.createdAt,
+  });
 });

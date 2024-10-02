@@ -5,6 +5,7 @@ import { Server } from "socket.io";
 import cors from "cors";
 import mongoose from "mongoose";
 
+import userRoutes from "./routes/user.routes";
 import authRoutes from "./routes/auth.routes";
 import messageRoutes from "./routes/message.routes";
 import errorHandler from "./middlewares/errorHandler";
@@ -32,6 +33,7 @@ app.get("/", (req, res) => {
 });
 app.use("/api/auth", authRoutes);
 app.use("/api/message", messageRoutes);
+app.use("/api/user", userRoutes);
 
 app.use(errorHandler);
 
@@ -41,19 +43,21 @@ mongoose
   .then(() => console.log("Database connected"))
   .catch((err) => console.error("Database connection error:", err));
 
-// Socket.io events
-io.on("connection", (socket) => {
-  console.log(`A user connected: ${socket.id}`);
+const users = {} as any;
 
-  // User joins room based on user ID
-  socket.on("join", (roomKey) => {
-    socket.join(roomKey);
-    console.log(`User ${roomKey} joined room`);
+io.on("connection", (socket) => {
+  socket.on("join", (userId) => {
+    users[userId] = socket.id;
+    console.log(`User ${userId} joined room`);
   });
 
-  // Handle message events
   socket.on("message", (arg) => {
-    socket.to(arg.conversation).emit("message", arg);
+    if (!users[arg.conversationKey]) {
+      return console.log(`User not in room: ${users[arg.conversationKey]}`);
+    }
+
+    socket.to(users[arg.conversationKey]).emit("message", arg);
+    console.log(`Message sent to room: ${users[arg.conversationKey]}`);
   });
 });
 
