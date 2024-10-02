@@ -7,11 +7,13 @@ const messageSchema = new mongoose.Schema(
       required: true,
     },
     sender: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
       required: true,
     },
-    chat: {
-      type: String,
+    conversation: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Conversation",
       required: true,
     },
   },
