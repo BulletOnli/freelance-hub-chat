@@ -3,20 +3,30 @@ import User from "../models/user.model";
 import Message from "../models/message.model";
 import Conversation from "../models/conversation.model";
 
-export const sendMessage = asyncHandler(async (req, res) => {
-  const { senderId, senderEmail, conversationKey, content } = req.body;
-
-  if (!conversationKey) throw new Error("Conversation ID is required");
-
-  let sender = await User.findOneAndUpdate(
-    { userId: senderId },
-    { $setOnInsert: { email: senderEmail } },
+const findOrCreateUser = async (userId: string, email: string) => {
+  return await User.findOneAndUpdate(
+    { userId },
+    { $setOnInsert: { email } },
     { new: true, upsert: true, select: "_id", lean: true }
   );
+};
+
+export const sendMessage = asyncHandler(async (req, res) => {
+  const {
+    senderId,
+    senderEmail,
+    receiverId,
+    receiverEmail,
+    conversationKey,
+    content,
+  } = req.body;
+
+  const receiver = await findOrCreateUser(receiverId, receiverEmail);
+  const sender = await findOrCreateUser(senderId, senderEmail);
 
   let conversation = await Conversation.findOneAndUpdate(
     { conversationKey },
-    { $setOnInsert: { participants: [sender?._id] } },
+    { $setOnInsert: { participants: [sender?._id, receiver?._id] } },
     { new: true, upsert: true, select: "_id", lean: true }
   );
 
@@ -32,4 +42,23 @@ export const sendMessage = asyncHandler(async (req, res) => {
     content: message.content,
     createdAt: message.createdAt,
   });
+});
+
+export const getAllMessages = asyncHandler(async (req, res) => {
+  const { receiverId, senderId } = req.query;
+  const receiver = await User.findOne({ userId: receiverId });
+  const sender = await User.findOne({ userId: senderId });
+
+  const conversation = await Conversation.findOne({
+    participants: { $all: [receiver?._id, sender?._id] },
+  });
+
+  const messages = await Message.find({
+    conversation: conversation?._id,
+  }).populate({
+    path: "sender",
+    select: ["userId", "email"],
+  });
+
+  res.status(200).json(messages);
 });
