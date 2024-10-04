@@ -3,31 +3,36 @@ import User from "../models/user.model";
 import Message from "../models/message.model";
 import Conversation from "../models/conversation.model";
 
-const findOrCreateUser = async (userId: string, email: string) => {
+const findOrCreateUser = async (userId: string) => {
   return await User.findOneAndUpdate(
     { userId },
-    { $setOnInsert: { email } },
+    { $setOnInsert: { userId } },
     { new: true, upsert: true, select: "_id", lean: true }
   );
 };
 
 export const sendMessage = asyncHandler(async (req, res) => {
-  const {
-    senderId,
-    senderEmail,
-    receiverId,
-    receiverEmail,
-    conversationKey,
-    content,
-  } = req.body;
+  const { senderId, receiverId, content } = req.body;
 
-  const receiver = await findOrCreateUser(receiverId, receiverEmail);
-  const sender = await findOrCreateUser(senderId, senderEmail);
+  const receiver = await findOrCreateUser(receiverId);
+  const sender = await findOrCreateUser(senderId);
 
-  let conversation = await Conversation.findOneAndUpdate(
-    { conversationKey },
-    { $setOnInsert: { participants: [sender?._id, receiver?._id] } },
-    { new: true, upsert: true, select: "_id", lean: true }
+  const conversation = await Conversation.findOneAndUpdate(
+    {
+      participants: {
+        $all: [
+          { $elemMatch: { $eq: receiver?._id } },
+          { $elemMatch: { $eq: sender?._id } },
+        ],
+      },
+    },
+    { $setOnInsert: { participants: [receiver?._id, sender?._id] } },
+    {
+      new: true,
+      upsert: true,
+      lean: true,
+      select: "_id",
+    }
   );
 
   const message = await Message.create({
@@ -37,8 +42,9 @@ export const sendMessage = asyncHandler(async (req, res) => {
   });
 
   res.status(200).json({
-    senderId,
-    conversationKey,
+    sender: {
+      userId: senderId,
+    },
     content: message.content,
     createdAt: message.createdAt,
   });
@@ -57,7 +63,7 @@ export const getAllMessages = asyncHandler(async (req, res) => {
     conversation: conversation?._id,
   }).populate({
     path: "sender",
-    select: ["userId", "email"],
+    select: "userId",
   });
 
   res.status(200).json(messages);

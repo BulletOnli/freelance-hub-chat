@@ -4,11 +4,12 @@ import "dotenv/config";
 import { Server } from "socket.io";
 import cors from "cors";
 import mongoose from "mongoose";
+import errorHandler from "./middlewares/errorHandler";
 
 import userRoutes from "./routes/user.routes";
 import authRoutes from "./routes/auth.routes";
 import messageRoutes from "./routes/message.routes";
-import errorHandler from "./middlewares/errorHandler";
+import conversationRoutes from "./routes/conversation.routes";
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -34,6 +35,7 @@ app.get("/", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/message", messageRoutes);
 app.use("/api/user", userRoutes);
+app.use("/api/conversation", conversationRoutes);
 
 app.use(errorHandler);
 
@@ -52,12 +54,12 @@ io.on("connection", (socket) => {
   });
 
   socket.on("message", (arg) => {
-    if (!users[arg.conversationKey]) {
-      return console.log(`User not in room: ${users[arg.conversationKey]}`);
+    if (!users[arg?.receiver?.userId]) {
+      return console.log(`User not in room: ${users[arg?.receiver?.userId]}`);
     }
 
-    socket.to(users[arg.conversationKey]).emit("message", arg);
-    console.log(`Message sent to room: ${users[arg.conversationKey]}`);
+    socket.to(users[arg?.receiver?.userId]).emit("message", arg);
+    console.log(`Message sent to room: ${users[arg?.receiver?.userId]}`);
   });
 });
 
