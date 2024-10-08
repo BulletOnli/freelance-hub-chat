@@ -5,6 +5,7 @@ import { Server } from "socket.io";
 import cors from "cors";
 import mongoose from "mongoose";
 import errorHandler from "./middlewares/errorHandler";
+import morgan from "morgan";
 
 import userRoutes from "./routes/user.routes";
 import authRoutes from "./routes/auth.routes";
@@ -27,6 +28,7 @@ export const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(morgan("dev"));
 
 // Routes
 app.get("/", (req, res) => {
