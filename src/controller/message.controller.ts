@@ -2,14 +2,7 @@ import asyncHandler from "express-async-handler";
 import User from "../models/user.model";
 import Message from "../models/message.model";
 import Conversation from "../models/conversation.model";
-
-const findOrCreateUser = async (userId: string) => {
-  return await User.findOneAndUpdate(
-    { userId },
-    { $setOnInsert: { userId } },
-    { new: true, upsert: true, select: "_id", lean: true }
-  );
-};
+import { findOrCreateUser } from "./user.controller";
 
 export const sendMessage = asyncHandler(async (req, res) => {
   const { senderId, receiverId, content } = req.body;

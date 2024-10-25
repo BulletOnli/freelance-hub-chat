@@ -1,14 +1,7 @@
 import asyncHandler from "express-async-handler";
 import Conversation from "../models/conversation.model";
+import { findOrCreateUser } from "./user.controller";
 import User from "../models/user.model";
-
-const findOrCreateUser = async (userId: string) => {
-  return await User.findOneAndUpdate(
-    { userId },
-    { $setOnInsert: { userId } },
-    { new: true, upsert: true, select: "_id", lean: true }
-  );
-};
 
 export const createConversation = asyncHandler(async (req, res) => {
   const { receiverId, senderId } = req.body;
@@ -44,9 +37,33 @@ export const createConversation = asyncHandler(async (req, res) => {
 export const getAllConversations = asyncHandler(async (req, res) => {
   const { userId } = req.params;
 
-  const conversations = await Conversation.find({
-    participants: { $all: [userId] },
-  }).populate("participants");
+  const user = await User.findOne({ userId }).select("_id");
 
-  res.status(200).json(conversations);
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  const conversations = await Conversation.find({
+    participants: user?._id,
+  })
+    .populate({
+      path: "participants",
+      select: "userId",
+    })
+    .select({
+      participants: 1,
+    });
+
+  const filteredConversations = conversations.map((conversation) => {
+    const otherParticipants = conversation.participants.filter(
+      (participant) => !participant._id.equals(user._id)
+    );
+
+    return {
+      ...conversation.toObject(),
+      receiver: otherParticipants[0],
+    };
+  });
+
+  res.status(200).json(filteredConversations);
 });

@@ -13,3 +13,18 @@ export const getUser = asyncHandler(async (req: Request, res: Response) => {
 
   res.status(200).json(user);
 });
+
+export const createUser = asyncHandler(async (req: Request, res: Response) => {
+  const { userId } = req.body;
+  const user = await userModel.create({ userId });
+
+  res.status(201).json(user);
+});
+
+export const findOrCreateUser = async (userId: string) => {
+  return await userModel.findOneAndUpdate(
+    { userId },
+    { $setOnInsert: { userId } },
+    { new: true, upsert: true, select: "_id", lean: true }
+  );
+};

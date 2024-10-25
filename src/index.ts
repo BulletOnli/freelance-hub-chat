@@ -11,6 +11,7 @@ import userRoutes from "./routes/user.routes";
 import authRoutes from "./routes/auth.routes";
 import messageRoutes from "./routes/message.routes";
 import conversationRoutes from "./routes/conversation.routes";
+import limiter from "./utils/rateLimiter";
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -29,6 +30,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
+// app.use(limiter);
 
 // Routes
 app.get("/", (req, res) => {
