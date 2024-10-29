@@ -49,13 +49,33 @@ mongoose
   .then(() => console.log("Database connected"))
   .catch((err) => console.error("Database connection error:", err));
 
-const users = {} as any;
+type Users = {
+  [userId: string]: string;
+};
+
+const users: Users = {};
 
 io.on("connection", (socket) => {
   socket.on("join", (userId) => {
     users[userId] = socket.id;
     console.log(`User ${userId} joined room`);
+
+    io.emit("onlineStatus", { userId, isConnected: true, users });
   });
+
+  const disconnectUser = () => {
+    for (const [userId, socketId] of Object.entries(users)) {
+      if (socketId === socket.id) {
+        delete users[userId];
+        io.emit("onlineStatus", { userId, isConnected: false });
+        console.log("User disconnected", userId);
+        break;
+      }
+    }
+  };
+
+  socket.on("logout", disconnectUser);
+  socket.on("disconnect", disconnectUser);
 
   socket.on("message", (arg) => {
     if (!users[arg?.receiver?.userId]) {
