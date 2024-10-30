@@ -1,6 +1,28 @@
-import mongoose from "mongoose";
+import mongoose, { Document, Model } from "mongoose";
 
-const conversationSchema = new mongoose.Schema(
+type IDeletedFor = {
+  userId: String;
+  deletedAt: Date;
+};
+
+type IConversation = {
+  participants: mongoose.Types.ObjectId[];
+  deletedFor: IDeletedFor[];
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type IConversationMethods = {
+  isDeletedFor(userId: string): boolean;
+};
+
+export type Conversation = Model<IConversation, {}, IConversationMethods>;
+
+const conversationSchema = new mongoose.Schema<
+  IConversation,
+  Conversation,
+  IConversationMethods
+>(
   {
     participants: [
       {
@@ -8,10 +30,28 @@ const conversationSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
+    deletedFor: [
+      {
+        userId: {
+          type: String,
+        },
+        deletedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
   },
   { timestamps: true }
 );
 
-export type Conversation = mongoose.InferSchemaType<typeof conversationSchema>;
+conversationSchema.methods.isDeletedFor = function (userId: string): boolean {
+  return this.deletedFor.some((deletion) => deletion.userId === userId);
+};
 
-export default mongoose.model<Conversation>("Conversation", conversationSchema);
+// export type Conversation = mongoose.InferSchemaType<typeof conversationSchema>;
+
+export default mongoose.model<IConversation, Conversation>(
+  "Conversation",
+  conversationSchema
+);

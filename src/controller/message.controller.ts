@@ -45,19 +45,43 @@ export const sendMessage = asyncHandler(async (req, res) => {
 
 export const getAllMessages = asyncHandler(async (req, res) => {
   const { receiverId, senderId } = req.query;
-  const receiver = await User.findOne({ userId: receiverId });
-  const sender = await User.findOne({ userId: senderId });
+  const [receiver, sender] = await Promise.all([
+    User.findOne({ userId: receiverId }),
+    User.findOne({ userId: senderId }),
+  ]);
+
+  if (!receiver || !sender) {
+    throw new Error("Invalid user ID");
+  }
 
   const conversation = await Conversation.findOne({
     participants: { $all: [receiver?._id, sender?._id] },
   });
 
+  if (!conversation) {
+    throw new Error("Conversation not found");
+  }
+
   const messages = await Message.find({
     conversation: conversation?._id,
   }).populate({
     path: "sender",
-    select: "userId",
+    select: "userId createdAt",
   });
 
-  res.status(200).json(messages);
+  if (conversation.isDeletedFor(sender?.userId)) {
+    const deleteFor = conversation.deletedFor.find(
+      (deleted) => deleted.userId === sender?.userId
+    );
+
+    if (!deleteFor) throw new Error("Deletion not found");
+
+    const filteredMessages = messages.filter((message) => {
+      return message.createdAt > deleteFor?.deletedAt;
+    });
+
+    res.status(200).json(filteredMessages);
+  } else {
+    res.status(200).json(messages);
+  }
 });
