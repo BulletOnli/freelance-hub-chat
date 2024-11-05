@@ -20,8 +20,8 @@ const server = createServer(app);
 // Configure Socket.io with CORS settings
 export const io = new Server(server, {
   cors: {
-    origin: "http://localhost:3000",
-    methods: ["GET", "POST"],
+    origin: "https://freelancehub-web.vercel.app",
+    methods: ["GET", "POST", "DELETE"],
   },
 });
 
