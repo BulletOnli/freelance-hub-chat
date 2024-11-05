@@ -40,7 +40,8 @@ export const getAllConversations = asyncHandler(async (req, res) => {
   const user = await User.findOne({ userId }).select("_id");
 
   if (!user) {
-    throw new Error("User not found");
+    res.status(200).json([]);
+    return;
   }
 
   const conversations = await Conversation.find({
