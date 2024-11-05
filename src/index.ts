@@ -18,9 +18,14 @@ const port = process.env.PORT || 8080;
 const server = createServer(app);
 
 // Configure Socket.io with CORS settings
+const corsOrigin =
+  process.env.NODE_ENV === "production"
+    ? "https://freelancehub-web.vercel.app"
+    : "*";
+
 export const io = new Server(server, {
   cors: {
-    origin: "https://freelancehub-web.vercel.app",
+    origin: corsOrigin,
     methods: ["GET", "POST", "DELETE"],
   },
 });
